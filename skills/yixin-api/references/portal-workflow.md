@@ -18,7 +18,7 @@ After login, guide the user to the public API list in the portal. The currently 
 
 | API key name | Portal/API display intent | Gateway path |
 | --- | --- | --- |
-| `search` | SearchAggregator 搜索聚合 API | `/api/v2/search` |
+| `search` | search | `/api/v2/search` |
 | `fin_db` | FinData 数据库问数 API | `/api/v1/fin_db` |
 
 Use the portal's current API list as the source of truth for the exact visible display names.

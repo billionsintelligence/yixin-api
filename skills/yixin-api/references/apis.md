@@ -19,7 +19,7 @@ SEARCH_API_KEY="$(jq -r '.search' ~/.config/yixin-api/api-keys.json)"
 FIN_DB_API_KEY="$(jq -r '.fin_db' ~/.config/yixin-api/api-keys.json)"
 ```
 
-## SearchAggregator Search API
+## search API
 
 Endpoint:
 
