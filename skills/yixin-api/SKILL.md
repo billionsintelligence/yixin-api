@@ -35,7 +35,11 @@ Default local key location:
 ~/.config/yixin-api/api-key.json
 ```
 
-If the user already has a preferred secret manager or config path, use that instead. If they still have the legacy per-API mapping file (`api-keys.json` with separate `search`/`fin_db` keys), tell them those per-API keys are obsolete and to switch to the product subscription key.
+If the user already has a preferred secret manager or config path, use that instead.
+
+## Legacy Users (per-API keys)
+
+The platform previously issued one key per API. If the user has the legacy mapping file (`~/.config/yixin-api/api-keys.json` with separate `search`/`fin_db` keys), uses `SEARCH_API_KEY`/`FIN_DB_API_KEY` variables, or reports that an old key suddenly returns `401`/`403`, proactively remind them: per-API keys are obsolete and they can upgrade to the single product-subscription key. Walk them through the migration steps in [CHANGELOG.md](CHANGELOG.md).
 
 ## Error Handling
 
