@@ -1,6 +1,6 @@
 # API Calls
 
-Use this reference to call the production Yixin OpenAPI gateway. All requests use:
+Use this reference for shared conventions, financial queries, and document search. API base: `https://openapi.billionsintelligence.com/api`. JSON requests use:
 
 ```http
 Content-Type: application/json
@@ -8,7 +8,17 @@ Accept: application/json
 X-API-KEY: <product-subscription-key>
 ```
 
-One product subscription key calls all public APIs. Do not include real API keys in examples. Use the `YIXIN_API_KEY` environment variable or load the key from the user's private file.
+Reuse the same key for APIs enabled for its application/subscription. Do not include real API keys in examples. Use `YIXIN_API_KEY` or the user's private key file. Multipart media upload must let the HTTP client set its content type and boundary; it is not a JSON request.
+
+| Need | Method and path (relative to API base) | Reference |
+| --- | --- | --- |
+| Financial database query | `POST /v1/fin_db` | Below |
+| Multi-source document search | `POST /v2/search` | Below |
+| Twitter/X search | `POST /v2/twitter/search` | [twitter.md](twitter.md) |
+| Webpage / announcement full text | `POST /v2/fetch` | [fetch.md](fetch.md) |
+| Media download / upload / query / cancel | `/v2/media/task` family | [media.md](media.md) |
+
+Public contracts: `https://openapi.billionsintelligence.com/docs/openapi/<slug>.json`, where slug is `fin-db`, `search`, `twitter`, `fetch`, or `media`. These references describe observed production contracts; consult the current contract for changes. Account-specific quota/pricing follows the portal, not historical free-period descriptions.
 
 ## Load The Key
 
@@ -49,7 +59,11 @@ Fields:
 | `search_mode` | no | `fast`, `advanced`, or `expert`. Defaults to `fast`. |
 | `count` | no | Maximum results, `1` to `50`. |
 | `timeout` | no | Per-engine timeout in seconds, `1` to `120`. |
-| `time_range` | no | Examples: `past 3 days`, `past 1 month`, `from 2025-01-01 to 2025-06-30`. |
+| `time_range` | no | Examples: `past 3 days`, `past 2 weeks`, `past 1 month`. Omit for no time filter. |
+
+For advanced/expert mode, allow at least 120 seconds in the HTTP client; if overriding the server's `timeout` (up to 120 seconds), keep the client timeout larger. `source=expert` is an expert-document source; `search_mode=expert` is a retrieval depth. Use the standalone Twitter endpoint for tweets.
+
+Inspect `success` and each `result[].status`; successful items are in `result[].content[]`. Preserve `title`, `link`, `snippet`, `date`, and `extra`. Results may be empty. A snippet is not full text. For announcement full text, pass the returned `extra.doc_id` unchanged to Fetch. Report/expert full text is not currently licensed for public access, even though their search snippets are available. See [fetch.md](fetch.md).
 
 curl:
 
@@ -102,13 +116,15 @@ request = urllib.request.Request(
 )
 
 try:
-    with urllib.request.urlopen(request, timeout=120) as response:
+    with urllib.request.urlopen(request, timeout=150) as response:
         print(response.status)
         print(response.read().decode("utf-8", errors="replace"))
 except urllib.error.HTTPError as exc:
     body = exc.read().decode("utf-8", errors="replace")
+    if exc.code == 402:
+        raise SystemExit("计费或额度拒绝，请检查控制台额度与套餐；不要原样重试。") from exc
     if exc.code == 429:
-        raise SystemExit("额度已用完，请联系销售升级：https://www.billionsintelligence.com") from exc
+        raise SystemExit("请求受限，请降低频率，并结合 Retry-After 和响应体检查限制类型。") from exc
     print(exc.code)
     print(body)
     raise
@@ -137,6 +153,8 @@ Fields:
 | --- | --- | --- |
 | `query` | yes | Natural-language financial data question. |
 | `data_sources` | no | `auto`, `A股财务行情数据库`, `海外财务行情数据库`, or `宏观行业数据库`. Use string or array form. |
+
+Specify the company/market, indicator, and date range in the question. Allow at least 120 seconds for complex financial queries. HTTP `200` alone is not success: inspect `success` and every `result[].status`. `result[].content` is normally Markdown table/text, unlike the array of search hits returned by search/twitter; preserve source, units, and time period when reporting values.
 
 curl:
 
@@ -183,13 +201,15 @@ request = urllib.request.Request(
 )
 
 try:
-    with urllib.request.urlopen(request, timeout=60) as response:
+    with urllib.request.urlopen(request, timeout=150) as response:
         print(response.status)
         print(response.read().decode("utf-8", errors="replace"))
 except urllib.error.HTTPError as exc:
     body = exc.read().decode("utf-8", errors="replace")
+    if exc.code == 402:
+        raise SystemExit("计费或额度拒绝，请检查控制台额度与套餐；不要原样重试。") from exc
     if exc.code == 429:
-        raise SystemExit("额度已用完，请联系销售升级：https://www.billionsintelligence.com") from exc
+        raise SystemExit("请求受限，请降低频率，并结合 Retry-After 和响应体检查限制类型。") from exc
     print(exc.code)
     print(body)
     raise
@@ -199,9 +219,19 @@ except urllib.error.HTTPError as exc:
 
 | Status | Meaning | User guidance |
 | --- | --- | --- |
-| `200` | Request reached the API. | Check the JSON body's `success`, `result`, and `error` fields. |
-| `400` | Invalid request body or empty required field. | Fix JSON and required parameters. |
+| `200` | Request processed, not necessarily business success. | Search/twitter/fin_db: check `success` and result statuses. Fetch: check `success`/`code`. Media: check envelope `code` and task status. |
+| `202` | Media task accepted. | Save `data.task_id` and query it; neither completion nor billing success is implied. |
+| `400` / `422` | Invalid request or parameter. | Fix the indicated field. `INVALID_DOC_ID`: use the original search result handle; do not repeatedly resubmit the invalid value. |
 | `401` | Missing or invalid API key. | Confirm `X-API-KEY` and that the key was copied correctly. |
-| `403` | Key is revoked or the product subscription is inactive. | Check subscription status in the portal; renew the key or re-subscribe. |
-| `429` | Rate limit or quota exceeded. | `额度已用完，请联系销售升级：https://www.billionsintelligence.com` |
-| `5xx` | Gateway or upstream service failure. | Retry later and preserve request/response context for support. |
+| `402` | Billing/entitlement refusal, such as insufficient available quota/balance. | Inspect the error code and current portal quota. Stop unchanged retries; an upgrade may be needed. |
+| `403` | API subscription, source license, or URL policy prevents access. | Inspect the body: `SOURCE_NOT_LICENSED` and `URL_NOT_ALLOWED` are not fixed by key rotation. |
+| `404` | Resource/task not found. | Check the task ID and environment. Do not create replacement media tasks automatically. |
+| `413` | Upload exceeds deployment size limit. | Check the file and published limit before another upload. |
+| `429` | Rate limiting or a quota limit indicated by the body. | Honor `Retry-After`, reduce concurrency, and inspect the error. Do not automatically claim the account is out of credits. |
+| `5xx` / transport timeout | Gateway/upstream failure or unknown request outcome. | Preserve request ID/status and redacted error context. See retry guidance below. |
+
+For an actual quota/plan upgrade, direct users to `https://openapi.billionsintelligence.com/usage/quota` and sales at `https://www.billionsintelligence.com`.
+
+For a transient read/query failure or rate limit, use bounded backoff (for example, at most two retries, respecting `Retry-After`; without it, wait 2 then 5 seconds). Stop and report persistent failures. Avoid high-concurrency or unbounded retries. Queries can consume usage; do not promise that retries or failed calls are free.
+
+Do not automatically retry media creation/upload when a timeout leaves acceptance unknown: a duplicate task can incur additional usage. Once a task ID is known, query that same task. See [media.md](media.md).

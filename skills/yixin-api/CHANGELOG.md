@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.1 — Production API coverage
+
+- Added Twitter/X search, webpage/announcement full text, and asynchronous media download/upload/query/cancel references, checked against production `/docs/openapi/*.json`.
+- Kept financial queries and document search, with API-specific result checks and slow-query timeouts.
+- Added opaque announcement `doc_id` handling and bounded pagination/polling; excluded unpublished media search/detail endpoints.
+- Separated billing/entitlement refusals (`402`) from rate limiting (`429`). Removed the mandatory quota-exhaustion message for every 429.
+- Updated portal/key guidance to reuse one key for enabled APIs without assuming universal access or automatically replacing legacy credentials.
+- Validated Skill metadata, reference links, and 11 request examples against public OpenAPI schemas; checked Python example syntax and the announcement workflow with local fixtures.
+- Production smoke tests passed for financial queries, announcement search, Twitter search, webpage/announcement full text, and media download through terminal task status `done`. Upload, cancellation, and final billing settlement were not exercised in the live smoke test.
+
+The entries below describe historical behavior. Use the current [portal workflow](references/portal-workflow.md) and [API reference](references/apis.md) for current access and migration; historical commands are not an instruction to delete working credentials.
+
 ## 2026-06-11 — Product-subscription API key (breaking change for legacy users)
 
 The Yixin OpenAPI platform switched from per-API keys to a single public API product subscription:
