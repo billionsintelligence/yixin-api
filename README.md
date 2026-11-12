@@ -2,7 +2,7 @@
 
 Codex skill for using the Yixin OpenAPI portal and public APIs.
 
-Supports financial database queries (`fin_db`), document search (`search`), Twitter/X search (`twitter`), webpage/announcement full text (`fetch`), and asynchronous media download/upload parsing (`media`). Uses the existing production HTTP gateway and an API key; no MCP server is required. See [SKILL.md](skills/yixin-api/SKILL.md) for API-specific workflows, access checks, and error handling.
+Supports financial queries (`fin_db`), document and rumour search (`search`), Twitter/X search (`twitter`), authorized webpage/document/tweet full text (`fetch`), asynchronous media parsing (`media`), PDF parsing (`document`), and PDF translation (`doc-translation`). Uses the existing production HTTP gateway and an API key; no MCP server is required. See [SKILL.md](skills/yixin-api/SKILL.md) for API-specific workflows, access checks, and error handling. Contracts were checked on 2026-11-12; availability and charges follow current account entitlements.
 
 ## Install
 

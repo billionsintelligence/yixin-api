@@ -15,10 +15,12 @@ Reuse the same key for APIs enabled for its application/subscription. Do not inc
 | Financial database query | `POST /v1/fin_db` | Below |
 | Multi-source document search | `POST /v2/search` | Below |
 | Twitter/X search | `POST /v2/twitter/search` | [twitter.md](twitter.md) |
-| Webpage / announcement full text | `POST /v2/fetch` | [fetch.md](fetch.md) |
+| Webpage / authorized document / tweet full text | `POST /v2/fetch` | [fetch.md](fetch.md) |
 | Media download / upload / query / cancel | `/v2/media/task` family | [media.md](media.md) |
+| PDF parsing | `/v2/document/uploads` and `/v2/document/tasks` families | [document.md](document.md) |
+| PDF translation | `/v2/doc-translation/uploads` and `/v2/doc-translation/tasks` families | [doc-translation.md](doc-translation.md) |
 
-Public contracts: `https://openapi.billionsintelligence.com/docs/openapi/<slug>.json`, where slug is `fin-db`, `search`, `twitter`, `fetch`, or `media`. These references describe observed production contracts; consult the current contract for changes. Account-specific quota/pricing follows the portal, not historical free-period descriptions.
+Public contracts: `https://openapi.billionsintelligence.com/docs/openapi/<slug>.json`, where slug is `fin-db`, `search`, `twitter`, `fetch`, `media`, `document`, or `doc-translation`. Discover current contracts through `/.well-known/api-catalog`. These references describe published production contracts, not a guarantee of successful execution for every account. Account-specific quota/pricing follows the portal.
 
 ## Load The Key
 
@@ -55,7 +57,7 @@ Fields:
 | Field | Required | Notes |
 | --- | --- | --- |
 | `query` | yes | Search keywords or natural-language question. |
-| `source` | no | `web`, `academic`, `image`, `video`, `announcement`, `report`, or `expert`. Defaults to `web`. |
+| `source` | no | `rumour`, `web`, `academic`, `image`, `video`, `announcement`, `report`, or `expert`. Defaults to `web`. |
 | `search_mode` | no | `fast`, `advanced`, or `expert`. Defaults to `fast`. |
 | `count` | no | Maximum results, `1` to `50`. |
 | `timeout` | no | Per-engine timeout in seconds, `1` to `120`. |
@@ -63,7 +65,15 @@ Fields:
 
 For advanced/expert mode, allow at least 120 seconds in the HTTP client; if overriding the server's `timeout` (up to 120 seconds), keep the client timeout larger. `source=expert` is an expert-document source; `search_mode=expert` is a retrieval depth. Use the standalone Twitter endpoint for tweets.
 
-Inspect `success` and each `result[].status`; successful items are in `result[].content[]`. Preserve `title`, `link`, `snippet`, `date`, and `extra`. Results may be empty. A snippet is not full text. For announcement full text, pass the returned `extra.doc_id` unchanged to Fetch. Report/expert full text is not currently licensed for public access, even though their search snippets are available. See [fetch.md](fetch.md).
+Inspect `success` and each `result[].status`; successful items are in `result[].content[]`. Preserve `title`, `link`, `snippet`, `date`, and `extra`. Results may be empty. A snippet is not full text. Pass `extra.doc_id` unchanged to Fetch together with the matching `source`: `announcement`, `report`, or `meeting` for expert/meeting documents (`expert` is a compatible alias). Report/meeting full text requires the corresponding account whitelist; receiving a handle is not authorization. See [fetch.md](fetch.md).
+
+For rumours, explicitly select `rumour`; the API default remains `web` even if Playground defaults to rumours:
+
+```json
+{"query":"美联储","source":"rumour","search_mode":"fast","count":10}
+```
+
+Treat rumour results as unverified research leads, retain attribution, and cross-check original disclosures before presenting claims as facts. Do not assume every source returns a Fetch-compatible handle. For report publisher attribution use `extra.institution`; do not invent an author/analyst field.
 
 curl:
 
@@ -224,7 +234,7 @@ except urllib.error.HTTPError as exc:
 | `400` / `422` | Invalid request or parameter. | Fix the indicated field. `INVALID_DOC_ID`: use the original search result handle; do not repeatedly resubmit the invalid value. |
 | `401` | Missing or invalid API key. | Confirm `X-API-KEY` and that the key was copied correctly. |
 | `402` | Billing/entitlement refusal, such as insufficient available quota/balance. | Inspect the error code and current portal quota. Stop unchanged retries; an upgrade may be needed. |
-| `403` | API subscription, source license, or URL policy prevents access. | Inspect the body: `SOURCE_NOT_LICENSED` and `URL_NOT_ALLOWED` are not fixed by key rotation. |
+| `403` | API subscription, source whitelist/license, URL policy, or API-specific quota refusal. | Inspect the body: `SOURCE_NOT_LICENSED` and `URL_NOT_ALLOWED` are not fixed by key rotation. PDF parsing can also use 403 for insufficient quota; see its reference. |
 | `404` | Resource/task not found. | Check the task ID and environment. Do not create replacement media tasks automatically. |
 | `413` | Upload exceeds deployment size limit. | Check the file and published limit before another upload. |
 | `429` | Rate limiting or a quota limit indicated by the body. | Honor `Retry-After`, reduce concurrency, and inspect the error. Do not automatically claim the account is out of credits. |
@@ -235,3 +245,5 @@ For an actual quota/plan upgrade, direct users to `https://openapi.billionsintel
 For a transient read/query failure or rate limit, use bounded backoff (for example, at most two retries, respecting `Retry-After`; without it, wait 2 then 5 seconds). Stop and report persistent failures. Avoid high-concurrency or unbounded retries. Queries can consume usage; do not promise that retries or failed calls are free.
 
 Do not automatically retry media creation/upload when a timeout leaves acceptance unknown: a duplicate task can incur additional usage. Once a task ID is known, query that same task. See [media.md](media.md).
+
+PDF parsing/translation have different upload, result, state, and idempotency contracts. Read their references instead of applying the Media envelope or retry rules blindly. In particular, uploading to object storage does not submit a parsing/translation task, and a replayed task submission may return 200 rather than 202.
