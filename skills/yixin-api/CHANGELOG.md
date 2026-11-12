@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.0 — Contract refresh (2026-11-12)
+
+- Require matching `source` for every Fetch doc_id example; update report/meeting whitelist guidance, Twitter full text, image URLs, pagination caps/defaults and keyword semantics.
+- Add rumour search and explain Fetch/Twitter shared billing without implying free second calls or expanded access.
+- Add PDF parsing and translation workflows with presigned upload credential isolation, per-API states, idempotency and bounded polling.
+- Expand discovery/onboarding from five to seven API families. Keep the public HTTP base, API key authentication, and Media request contract unchanged.
+- Source: production public API catalog and OpenAPI documents. This update does not claim live paid-call or billing-settlement verification.
+
 ## 1.0.1 — Production API coverage
 
 - Added Twitter/X search, webpage/announcement full text, and asynchronous media download/upload/query/cancel references, checked against production `/docs/openapi/*.json`.

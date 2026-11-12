@@ -21,10 +21,14 @@ After login, open [API services](https://openapi.billionsintelligence.com/api-se
 | `search` | search | `/api/v2/search` |
 | `fin_db` | FinData 数据库问数 API | `/api/v1/fin_db` |
 | `twitter` | 推特（X）检索 | `/api/v2/twitter/search` |
-| `fetch` | 网页 / 公告全文获取 | `/api/v2/fetch` |
+| `fetch` | 网页、公告、授权研报/纪要及推特全文 | `/api/v2/fetch` |
 | `media` | 异步媒体解析 | `/api/v2/media/task` and its upload/query/cancel operations |
+| `document` | PDF 文档解析 | `/api/v2/document/uploads` and `/api/v2/document/tasks` families |
+| `doc-translation` | PDF 文件翻译 | `/api/v2/doc-translation/uploads` and `/api/v2/doc-translation/tasks` families |
 
 Use the portal's current product and API list as the source of truth for the exact visible display names.
+
+The public API catalog at `https://openapi.billionsintelligence.com/.well-known/api-catalog` discovers contracts without login; it does not prove the current key has access. Search supports `source=rumour`. Report/meeting full text additionally needs its account whitelist; announcement/Twitter full text does not. Shared billing metrics are not shared access permissions. See [fetch.md](fetch.md).
 
 Reuse one key across the APIs enabled for its application/subscription; do not require a separate key for each API. Access to newly introduced APIs and licensed sources still depends on permissions. If a valid key receives `403`, check the target API subscription and error body instead of assuming the key is invalid.
 
@@ -69,7 +73,7 @@ Legacy note: an earlier client may use `api-keys.json` or per-API variables. Che
 Before making a request:
 
 1. Load the key from the file or the `YIXIN_API_KEY` environment variable.
-2. Send it as `X-API-KEY` for enabled APIs, including media upload and task queries.
+2. Send it as `X-API-KEY` for enabled gateway APIs, including media upload and task queries. For PDF presigned uploads or any returned download/image URL, use a separate request without the platform key or Portal cookies; preserve only the returned presigned headers required for upload.
 
 Portal cookies, OAuth user tokens, billing service tokens, and internal identity headers are not required in public API examples. The gateway supplies its trusted billing context.
 

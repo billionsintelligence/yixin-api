@@ -47,5 +47,10 @@ Each hit can contain:
 - `title`: author handle and a text prefix.
 - `snippet`: tweet text; `link`: public tweet URL; `date`: publication time (documented as Beijing time).
 - `extra.username`, `author_name`, `post_id`, `view_count`, `profile_image_url` when provided.
+- `extra.doc_id`: the string handle for Fetch; keep it as a string rather than converting a potentially large tweet ID to a number.
 
 Preserve tweet links and timestamps when summarizing. Treat missing optional fields and an empty results array normally. Do not invent view counts or attribute an author's statements to another author.
+
+## Retrieve Full Text
+
+When requested, send `POST /v2/fetch` with `{"source":"twitter","doc_id":"<exact extra.doc_id>"}`. Read [fetch.md](fetch.md) first. Use the returned handle, not optional `post_id`; omit `url` and `keyword`. This requires Fetch API access but no business whitelist. Search and full text share `twitter.requests`, but each call is separately counted; shared quota does not make full text free.
